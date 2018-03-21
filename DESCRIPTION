@@ -1,11 +1,18 @@
 Package: reportTools
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Tools For Writing Reports With RMarkdown
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Author: Ewan Carr
+Authors@R: person("Ewan", "Carr", email = "ewan.carr@kcl.ac.uk", role = c("aut", "cre"))
+Maintainer: Ewan Carr <ewan.carr@kcl.ac.uk>
+Description: A collection of scripts to produce tables and other outputs
+    within an RMarkdown document.
+License: GPL-3
 Encoding: UTF-8
 LazyData: true
+Imports:
+    tidyverse
+Suggests:
+    pander,
+    flextable
+RoxygenNote: 6.0.1
