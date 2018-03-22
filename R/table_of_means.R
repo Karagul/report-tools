@@ -29,6 +29,11 @@
 #'                    height, mass, birth_year)
 #' @import dplyr
 #' @import tidyr
+
+# TODO:
+#   Check inputs are valid.
+#   Find a better way of handling any number of input variables.
+
 table_of_means <- function(data,
                            group,
                            caption = NULL,
@@ -85,17 +90,4 @@ table_of_means <- function(data,
   }
 }
 
-# data(mtcars)
-# table_of_means(mtcars,
-#                cyl,
-#                table = FALSE,
-#                caption = NULL,
-#                wt, hp)
-#
-#
-# data(starwars)
-# table_of_means(starwars,
-#                gender,
-#                table = TRUE,
-#                caption = "Means by gender",
-#                height, mass, birth_year)
+
