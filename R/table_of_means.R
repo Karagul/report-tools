@@ -21,12 +21,16 @@
 #'                    mpg, disp, hp)
 #' @import dplyr
 #' @import tidyr
-multiple_means <- function(data,
+table_of_means <- function(data,
                            group,
                            caption = NULL,
                            table = TRUE,
                            ...) {
+  # Capture input using tidy evaluation
   vars_quo <- quos(...)
+  if (length(vars_quo) == 0) {
+    stop("You must supply at least one variable. None found.")
+  }
   group_quo <- enquo(group)
   source_data <- data %>%
     group_by(!!group_quo) %>%
