@@ -14,11 +14,19 @@
 #'
 #' @examples
 #'     data(mtcars)
-#'     multiple_means(mtcars,
-#'                    group = cyl,
-#'                    caption = "My table",
+#'     table_of_means(mtcars,
+#'                    cyl,
 #'                    table = FALSE,
-#'                    mpg, disp, hp)
+#'                    caption = NULL,
+#'                    wt, hp)
+#'
+#'
+#'     data(starwars)
+#'     table_of_means(starwars,
+#'                    gender,
+#'                    table = TRUE,
+#'                    caption = "Means by gender",
+#'                    height, mass, birth_year)
 #' @import dplyr
 #' @import tidyr
 table_of_means <- function(data,
@@ -26,27 +34,68 @@ table_of_means <- function(data,
                            caption = NULL,
                            table = TRUE,
                            ...) {
-  # Capture input using tidy evaluation
+  # Check inputs are valid
+  if (!(is.data.frame(data))) {
+    stop("Supplied data is not a valid data.frame")
+  } else if (nargs() <= 5) {
+    stop("Too few arguments supplied. This function requires at least 5 arguments.")
+  }
+  # Capture inputs
   vars_quo <- quos(...)
+  group_quo <- enquo(group)
+  # Changes that are made regardless of number of input variables
+  make_changes <- function(x) {
+    x %>%
+      mutate_if(is.labelled, as_factor) %>%
+      mutate_if(is.numeric, round, 1) %>%
+      mutate(`Mean (SD) [range]` = stringr::str_glue("{mean} ({sd}) [{min}-{max}]")) %>%
+      drop_na()
+  }
+  # Process depending on the number of input variables
+  number_of_vars <- length(vars_quo)
   if (length(vars_quo) == 0) {
     stop("You must supply at least one variable. None found.")
+  } else if (number_of_vars == 1) {
+    vars_quo <- quo(...)
+    raw <- data %>%
+      group_by(!!group_quo) %>%
+      select(!!vars_quo) %>%
+      summarise_all(funs(mean, sd, min, max)) %>%
+      make_changes() %>%
+      select(!!group_quo, `Mean (SD) [range]`) %>%
+      spread(!!group_quo, `Mean (SD) [range]`)
+  } else if (number_of_vars > 1) {
+    raw <- data %>%
+      group_by(!!group_quo) %>%
+      select(!!!vars_quo) %>%     # NOTE: Using "!!!" here because multiple input variables.
+      summarise_all(funs(mean, sd, min, max),
+                    na.rm = TRUE) %>%
+      gather(key, value, -!!group_quo) %>%
+      tidyr::extract(key, c("Variable", "measure"),
+                     "(.*)_(mean|sd|min|max)$") %>%
+      spread(measure, value) %>%
+      make_changes() %>%
+      select(!!group_quo, Variable, `Mean (SD) [range]`) %>%
+      spread(!!group_quo, `Mean (SD) [range]`)
   }
-  group_quo <- enquo(group)
-  source_data <- data %>%
-    group_by(!!group_quo) %>%
-    summarise_at(vars(!!!vars_quo),
-                 funs(mean, sd, min, max)) %>%
-    gather(key, value, -!!group_quo) %>%
-    separate(key, c("Variable", "measure")) %>%
-    spread(measure, value) %>%
-    mutate_if(is.numeric, round, 1) %>%
-    mutate(`Mean (SD) [range]` = stringr::str_glue("{mean} ({sd}) [{min}-{max}]")) %>%
-    select(!!group_quo, Variable, `Mean (SD) [range]`) %>%
-    drop_na() %>%
-    spread(!!group_quo, `Mean (SD) [range]`)
   if (table) {
-    return(source_data %>% pander::pandoc.table())
+    return(raw %>% pander::pandoc.table())
   } else {
-    return(source_data)
+    return(raw)
   }
 }
+
+# data(mtcars)
+# table_of_means(mtcars,
+#                cyl,
+#                table = FALSE,
+#                caption = NULL,
+#                wt, hp)
+#
+#
+# data(starwars)
+# table_of_means(starwars,
+#                gender,
+#                table = TRUE,
+#                caption = "Means by gender",
+#                height, mass, birth_year)
