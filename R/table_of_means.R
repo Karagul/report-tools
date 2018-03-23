@@ -1,50 +1,31 @@
-#' Table showing mean, SD, range, for multiple numeric variables
+#' Table showing mean, SD, range, for one or more numeric variables
 #' @param data A data frame
 #' @param group The grouping variable, e.g. trial arm
-#' @param caption A caption for the table (string)
-#' @param table Optional parameter to determine whether the function
-#'     should return a formatted \code{pander} or \code{flextable} table
-#'     (\code{TRUE}) or the raw data frame (\code{FALSE}). Defaults to \code{TRUE}.
 #' @param ... Comma-separated list of variables to calculate means for.
 #'
 #' @return A data frame with descriptive statistics (mean, SD, range)
-#'     the selected variables; a formatted table with this information,
-#'     depending on the \code{table} option.
+#'     for the selected variables.
 #' @export
 #'
 #' @examples
 #'     data(mtcars)
 #'     table_of_means(mtcars,
 #'                    cyl,
-#'                    table = FALSE,
-#'                    caption = NULL,
 #'                    wt, hp)
-#'
 #'
 #'     data(starwars)
 #'     table_of_means(starwars,
 #'                    gender,
-#'                    table = TRUE,
-#'                    caption = "Means by gender",
 #'                    height, mass, birth_year)
 #' @import dplyr
 #' @import tidyr
 
 # TODO:
+#   Rewrite documentation.
 #   Check inputs are valid.
 #   Find a better way of handling any number of input variables.
 
-table_of_means <- function(data,
-                           group,
-                           caption = NULL,
-                           table = TRUE,
-                           ...) {
-  # Check inputs are valid
-  if (!(is.data.frame(data))) {
-    stop("Supplied data is not a valid data.frame")
-  } else if (nargs() <= 5) {
-    stop("Too few arguments supplied. This function requires at least 5 arguments.")
-  }
+table_of_means <- function(data, group, ...) {
   # Capture inputs
   vars_quo <- quos(...)
   group_quo <- enquo(group)
@@ -61,6 +42,7 @@ table_of_means <- function(data,
   if (length(vars_quo) == 0) {
     stop("You must supply at least one variable. None found.")
   } else if (number_of_vars == 1) {
+    # =================== MAKE TABLE FOR SINGLE VARIABLE ================== #
     vars_quo <- quo(...)
     raw <- data %>%
       group_by(!!group_quo) %>%
@@ -70,24 +52,37 @@ table_of_means <- function(data,
       select(!!group_quo, `Mean (SD) [range]`) %>%
       spread(!!group_quo, `Mean (SD) [range]`)
   } else if (number_of_vars > 1) {
+    # ====================== MAKE TABLE FOR MULTIPLE VARIABLES =========== #
+
+    get_name <- function(x) {
+      if (!is.null(var_label(x))) {
+        return(var_label(x))
+      } else {
+        return(deparse(substitute(x)))
+      }
+    }
+
+    labels <- data %>%
+      select(!!!vars_quo) %>%
+      mutate_all(get_name) %>%
+      unique() %>%
+      gather(var, label)
+
     raw <- data %>%
       group_by(!!group_quo) %>%
-      select(!!!vars_quo) %>%     # NOTE: Using "!!!" here because multiple input variables.
+      select(!!!vars_quo) %>%
       summarise_all(funs(mean, sd, min, max),
                     na.rm = TRUE) %>%
       gather(key, value, -!!group_quo) %>%
-      tidyr::extract(key, c("Variable", "measure"),
+      tidyr::extract(key, c("var", "measure"),
                      "(.*)_(mean|sd|min|max)$") %>%
       spread(measure, value) %>%
       make_changes() %>%
-      select(!!group_quo, Variable, `Mean (SD) [range]`) %>%
-      spread(!!group_quo, `Mean (SD) [range]`)
+      select(!!group_quo, var, `Mean (SD) [range]`) %>%
+      spread(!!group_quo, `Mean (SD) [range]`) %>%
+      full_join(labels) %>%
+      select(-var) %>%
+      select(Variable = label,  everything())
   }
-  if (table) {
-    return(raw %>% pander::pandoc.table())
-  } else {
     return(raw)
-  }
 }
-
-
