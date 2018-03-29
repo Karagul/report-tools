@@ -19,6 +19,8 @@
 #'                    height, mass, birth_year)
 #' @import dplyr
 #' @import tidyr
+#' @import labelled
+#' @import forcats
 
 # TODO:
 #   Rewrite documentation.
