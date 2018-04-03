@@ -1,14 +1,20 @@
 #' Table showing counts for one or more categorical variables.
 #' @param data A data frame
-#' @param ... Comma-separated list of categorical variables to include.
+#' @param group An optional grouping variable.
 #'
 #' @return A \code{flextable} with descriptive statistics (N, percent, range)
-#'     for the selected variables.
+#'     for all variables in the supplied \code{data.frame}.
 #' @export
 #'
 #' @examples
 #'     data(mtcars)
-#'     table_of_counts(mtcars, cyl, wt, hp)
+#'     mtcars %>%
+#'       select(cyl, vs) %>%
+#'       table_of_counts()
+#'       
+#'     mtcars %>%
+#'       select(cyl, vs, am) %>%
+#'       table_of_counts(cyl)
 #'
 #' @import dplyr
 #' @import tidyr
@@ -16,38 +22,82 @@
 #' @import flextable
 
 # TODO:
-#   Add option to display counts by group.
 #   Check inputs are valid.
 
-table_of_counts <- function(data, ...) {
-  vars_quo <- quos(...)
-  if (length(vars_quo) == 1) {
-    vars_quo <- quo(...)
-    data <- select(data, !!vars_quo)
-  } else {
-    data <- select(data, !!!vars_quo)
+table_of_counts <- function(data, group) {
+  group_quo <- enquo(group)
+  # Helper functions ===========================================================
+  # Function to extract variable names
+  get_name <- function(x) {
+    if (!is.null(var_label(x))) {
+      return(var_label(x))
+    } else {
+      return(deparse(substitute(x)))
+    }
   }
-  data %>%
-    mutate_if(is.labelled, as_factor) %>%
-    gather(key, value) %>%
-    mutate(value = replace_na(value, "Missing")) %>%
-    count(key, value) %>%
-    group_by(key) %>%
-    mutate(total = sum(n),
-           percent = (n / total) * 100,
-           min = min(n),           max = max(n),
-           value = str_replace(value, "^[0-9]+\\. ", "")) %>%
-    ungroup() %>%
-    mutate(n_per = str_glue("{n} ({round(percent, 1)}%)"),
-           range = str_glue("{min}-{max}")) %>%
-    select(key, value, n_per, range) %>%
-    arrange(key, value) %>%
-    flextable::flextable() %>%
-    merge_v(j = "key") %>%
-    set_header_labels(key = "Variable",
-                      value = "Category",
-                      n_per = "N (%)",
-                      range = "Range") %>%
-    autofit() %>%
-    theme_vanilla()
+  # Function to extract variable labels
+  get_labels <- function(x) {
+    x %>%
+      mutate_all(get_name) %>%
+      unique() %>%
+      gather(var, label) 
+  }
+  # ========================= MAIN FUNCTION STARTS HERE ========================
+  # If data are NOT grouped ----------------------------------------------------
+  if (missing(group)) {
+    data %>%
+      # setNames(get_name(.)) %>%
+      mutate_if(is.labelled, as_factor) %>%
+      gather(key, value) %>%
+      mutate(value = replace_na(value, "Missing")) %>%
+      count(key, value) %>%
+      group_by(key) %>%
+      mutate(total   = sum(n),
+             percent = (n / total) * 100,
+             min     = min(n), 
+             max     = max(n)) %>%
+      ungroup() %>%
+      mutate(n_per = str_glue("{n} ({round(percent, 1)}%)"),
+             range = str_glue("{min}-{max}"),
+             category = str_replace(value, "^[0-9]+\\. ", ""))  %>%
+      select(key, category, n_per, range) %>%
+      arrange(key) %>%
+      flextable::flextable() %>%
+      merge_v(j = "key") %>%
+      set_header_labels(key      = "Variable",
+                        category = "Category",
+                        n_per    = "N (%)",
+                        range    = "Range") %>%
+      autofit() %>%
+      theme_vanilla()
+  } else {
+    # If data ARE grouped ------------------------------------------------------
+    data %>%
+      mutate_if(is.labelled, as_factor) %>%
+      gather(key, value, -(!!group_quo))  %>%
+      mutate(value = replace_na(value, "Missing")) %>%
+      group_by(!!group_quo) %>%
+      count(key, value) %>%
+      group_by(key, value) %>%
+      mutate(total    = sum(n),
+             percent  = (n / total) * 100,
+             min      = min(n),  
+             max      = max(n),
+             category = str_replace(value, "^[0-9]+\\. ", ""))  %>%
+      group_by(!!group_quo) %>%
+      mutate(n_per = str_glue("{n} ({sprintf(\"%0.1f\", round(percent, 1))}%)")) %>%
+      rename(var = key) %>%
+      left_join(get_labels(data)) %>%
+      select(label, category, !!group_quo, n_per) %>%
+      spread(!!group_quo, n_per) %>%
+      arrange(label, category) %>%
+      flextable::regulartable() %>%
+      merge_v(j = "label") %>%
+      set_header_labels(label    = "Variable",
+                        category = "Category",
+                        n_per    = "N (%)",
+                        range    = "Range") %>%
+      autofit() %>%
+      theme_vanilla()
+  }
 }
