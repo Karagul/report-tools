@@ -4,14 +4,14 @@
 \alias{table_of_means}
 \title{Table showing mean, SD, range, for one or more numeric variables}
 \usage{
-table_of_means(data, group, ...)
+table_of_means(data, ..., group)
 }
 \arguments{
 \item{data}{A data frame}
 
-\item{group}{The grouping variable, e.g. trial arm}
-
 \item{...}{Comma-separated list of variables to calculate means for.}
+
+\item{group}{An optional grouping variable, e.g. trial arm}
 }
 \value{
 A data frame with descriptive statistics (mean, SD, range)
@@ -23,11 +23,12 @@ Table showing mean, SD, range, for one or more numeric variables
 \examples{
     data(mtcars)
     table_of_means(mtcars,
-                   cyl,
-                   wt, hp)
+                   wt, hp,
+                   group = cyl)
 
     data(starwars)
-    table_of_means(starwars,
-                   gender,
-                   height, mass, birth_year)
+    table_of_means(starwars, height, mass, birth_year)
+    table_of_means(starwars, height, mass, birth_year,
+                   group = gender)
+    
 }
