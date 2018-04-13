@@ -42,8 +42,16 @@ table_of_counts <- function(data, group) {
       unique() %>%
       gather(var, label) 
   }
+  # Function to count number of non-grouping variables
+  count_var <- function(x) {
+    x %>%
+      select(-!!group_quo) %>%
+      names() %>%
+      length()
+  }
   # ========================= MAIN FUNCTION STARTS HERE ========================
   # If data are NOT grouped ----------------------------------------------------
+  # This presents N (percent) and range for a single variable.
   if (missing(group)) {
     data %>%
       # setNames(get_name(.)) %>%
@@ -57,19 +65,21 @@ table_of_counts <- function(data, group) {
              min     = min(n), 
              max     = max(n)) %>%
       ungroup() %>%
-      mutate(n_per = str_glue("{n} ({round(percent, 1)}%)"),
+      mutate(n_per = str_glue("{n} ({round(percent, 1)})"),
              range = str_glue("{min}-{max}"),
              category = str_replace(value, "^[0-9]+\\. ", ""))  %>%
-      select(key, category, n_per, range) %>%
-      arrange(key) %>%
-      flextable::flextable() %>%
-      merge_v(j = "key") %>%
-      set_header_labels(key      = "Variable",
+      select(var = key, category, n_per, range) %>%
+      left_join(get_labels(data)) %>%
+      select(label, category, n_per, range) %>%
+      flextable::regulartable() %>%
+      merge_v(j = "label") %>%
+      set_header_labels(label    = "Variable",
                         category = "Category",
                         n_per    = "N (%)",
                         range    = "Range") %>%
+      merge_v(part = "header") %>%
       autofit() %>%
-      theme_vanilla()
+      theme_booktabs()
   } else {
     # If data ARE grouped ------------------------------------------------------
     data %>%
@@ -85,19 +95,29 @@ table_of_counts <- function(data, group) {
              max      = max(n),
              category = str_replace(value, "^[0-9]+\\. ", ""))  %>%
       group_by(!!group_quo) %>%
-      mutate(n_per = str_glue("{n} ({sprintf(\"%0.1f\", round(percent, 1))}%)")) %>%
+      mutate(n_per = str_glue("{n} ({sprintf(\"%0.1f\", round(percent, 1))})")) %>%
       rename(var = key) %>%
       left_join(get_labels(data)) %>%
-      select(label, category, !!group_quo, n_per) %>%
+      select(label, category, !!group_quo, n_per, total) %>%
       spread(!!group_quo, n_per) %>%
-      arrange(label, category) %>%
+      select(label, category, No, Yes, Total = total) %>%
       flextable::regulartable() %>%
       merge_v(j = "label") %>%
+      add_header(top = TRUE,
+                 label = "Variable",
+                 category = "Category",
+                 No = "No",
+                 Yes = "Yes",
+                 Total = "Total") %>%
       set_header_labels(label    = "Variable",
                         category = "Category",
                         n_per    = "N (%)",
-                        range    = "Range") %>%
+                        range    = "Range",
+                        No = "n (%)",
+                        Yes = "n (%)",
+                        Total = "Total") %>%
+      merge_v(part = "header") %>%
       autofit() %>%
-      theme_vanilla()
+      theme_booktabs()
   }
 }
