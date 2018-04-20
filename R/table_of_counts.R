@@ -97,25 +97,17 @@ table_of_counts <- function(data, group) {
       group_by(!!group_quo) %>%
       mutate(n_per = str_glue("{n} ({sprintf(\"%0.1f\", round(percent, 1))})")) %>%
       rename(var = key) %>%
-      left_join(get_labels(data)) %>%
-      select(label, category, !!group_quo, n_per, total) %>%
-      spread(!!group_quo, n_per) %>%
-      select(label, category, No, Yes, Total = total) %>%
+      left_join(get_labels(mtcars)) %>%
+      select(label, category, cyl, n_per, total) %>%
+      spread(cyl, n_per) %>%
+      select(label, category, names(.)[-grep("total", names(.))], total) %>%
       flextable::regulartable() %>%
       merge_v(j = "label") %>%
-      add_header(top = TRUE,
-                 label = "Variable",
-                 category = "Category",
-                 No = "No",
-                 Yes = "Yes",
-                 Total = "Total") %>%
       set_header_labels(label    = "Variable",
                         category = "Category",
                         n_per    = "N (%)",
                         range    = "Range",
-                        No = "n (%)",
-                        Yes = "n (%)",
-                        Total = "Total") %>%
+                        total = "Total") %>%
       merge_v(part = "header") %>%
       autofit() %>%
       theme_booktabs()
