@@ -1,4 +1,4 @@
-G' Table showing counts for one or more categorical variables.
+#' Table showing counts for one or more categorical variables.
 #' @param data A data frame
 #' @param group An optional grouping variable.
 #'
