@@ -1,4 +1,4 @@
-#' Table showing counts for one or more categorical variables.
+G' Table showing counts for one or more categorical variables.
 #' @param data A data frame
 #' @param group An optional grouping variable.
 #'
@@ -24,7 +24,7 @@
 # TODO:
 #   Check inputs are valid.
 
-table_of_counts <- function(data, group) {
+table_of_counts <- function(data, group, maketable = TRUE) {
   group_quo <- enquo(group)
   # Helper functions ===========================================================
   # Function to extract variable names
@@ -53,8 +53,7 @@ table_of_counts <- function(data, group) {
   # If data are NOT grouped ----------------------------------------------------
   # This presents N (percent) and range for a single variable.
   if (missing(group)) {
-    data %>%
-      # setNames(get_name(.)) %>%
+    data_for_table <- data %>%
       mutate_if(is.labelled, as_factor) %>%
       gather(key, value) %>%
       mutate(value = replace_na(value, "Missing")) %>%
@@ -70,19 +69,25 @@ table_of_counts <- function(data, group) {
              category = str_replace(value, "^[0-9]+\\. ", ""))  %>%
       select(var = key, category, n_per, range) %>%
       left_join(get_labels(data)) %>%
-      select(label, category, n_per, range) %>%
-      flextable::regulartable() %>%
-      merge_v(j = "label") %>%
-      set_header_labels(label    = "Variable",
-                        category = "Category",
-                        n_per    = "N (%)",
+      select(label, category, n_per, range) 
+
+      if (maketable)  {
+          data_for_table %>%
+              flextable::regulartable() %>%
+              merge_v(j = "label") %>%
+              set_header_labels(label    = "Variable",
+                                category = "Category",
+                                n_per    = "N (%)",
                         range    = "Range") %>%
-      merge_v(part = "header") %>%
-      autofit() %>%
-      theme_booktabs()
+              merge_v(part = "header") %>%
+              autofit() %>%
+              theme_booktabs()
+      } else {
+          return(data_for_table)
+      }
   } else {
     # If data ARE grouped ------------------------------------------------------
-    data %>%
+    data_for_table <- data %>%
       mutate_if(is.labelled, as_factor) %>%
       gather(key, value, -(!!group_quo))  %>%
       mutate(value = replace_na(value, "Missing")) %>%
@@ -100,16 +105,22 @@ table_of_counts <- function(data, group) {
       left_join(get_labels(data)) %>%
       select(label, category, !!group_quo, n_per, total) %>%
       spread(!!group_quo, n_per) %>%
-      select(label, category, names(.)[-grep("total", names(.))], total) %>%
-      flextable::regulartable() %>%
-      merge_v(j = "label") %>%
-      set_header_labels(label    = "Variable",
-                        category = "Category",
-                        n_per    = "N (%)",
-                        range    = "Range",
-                        total = "Total") %>%
-      merge_v(part = "header") %>%
-      autofit() %>%
-      theme_booktabs()
+      select(label, category, names(.)[-grep("total", names(.))], total) 
+    
+      if (maketable) {
+          data_for_table %>%
+              flextable::regulartable() %>%
+              merge_v(j = "label") %>%
+              set_header_labels(label    = "Variable",
+                                category = "Category",
+                                n_per    = "N (%)",
+                                range    = "Range",
+                                total = "Total") %>%
+              merge_v(part = "header") %>%
+              autofit() %>%
+              theme_booktabs()
+      } else {
+          return(data_for_table)
+      }
   }
 }
