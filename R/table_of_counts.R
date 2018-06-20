@@ -97,9 +97,9 @@ table_of_counts <- function(data, group) {
       group_by(!!group_quo) %>%
       mutate(n_per = str_glue("{n} ({sprintf(\"%0.1f\", round(percent, 1))})")) %>%
       rename(var = key) %>%
-      left_join(get_labels(mtcars)) %>%
-      select(label, category, cyl, n_per, total) %>%
-      spread(cyl, n_per) %>%
+      left_join(get_labels(data)) %>%
+      select(label, category, !!group_quo, n_per, total) %>%
+      spread(!!group_quo, n_per) %>%
       select(label, category, names(.)[-grep("total", names(.))], total) %>%
       flextable::regulartable() %>%
       merge_v(j = "label") %>%
