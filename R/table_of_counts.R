@@ -56,7 +56,7 @@ table_of_counts <- function(data, group, maketable = TRUE) {
     data_for_table <- data %>%
       mutate_if(is.labelled, as_factor) %>%
       gather(key, value) %>%
-      mutate(value = replace_na(value, "Missing")) %>%
+      mutate(value = tidyr::replace_na(value, "Missing")) %>%
       count(key, value) %>%
       group_by(key) %>%
       mutate(total   = sum(n),
